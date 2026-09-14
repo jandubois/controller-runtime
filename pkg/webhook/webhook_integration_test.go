@@ -86,10 +86,7 @@ var _ = Describe("Webhook", func() {
 			server := m.GetWebhookServer()
 			server.Register("/failing", &webhook.Admission{Handler: &rejectingValidator{d: admission.NewDecoder(testenv.Scheme)}})
 
-			go func() {
-				err := server.Start(ctx)
-				Expect(err).NotTo(HaveOccurred())
-			}()
+			startServer(ctx, server)
 
 			Eventually(func() bool {
 				err := c.Create(ctx, obj)
@@ -110,11 +107,7 @@ var _ = Describe("Webhook", func() {
 			server := m.GetWebhookServer()
 			server.Register("/failing", &webhook.Admission{Handler: admission.MultiValidatingHandler(&rejectingValidator{d: admission.NewDecoder(testenv.Scheme)})})
 
-			go func() {
-				defer GinkgoRecover()
-				err = server.Start(ctx)
-				Expect(err).NotTo(HaveOccurred())
-			}()
+			startServer(ctx, server)
 
 			Eventually(func() bool {
 				err = c.Create(ctx, obj)
@@ -131,10 +124,7 @@ var _ = Describe("Webhook", func() {
 			})
 			server.Register("/failing", &webhook.Admission{Handler: &rejectingValidator{d: admission.NewDecoder(testenv.Scheme)}})
 
-			go func() {
-				err := server.Start(ctx)
-				Expect(err).NotTo(HaveOccurred())
-			}()
+			startServer(ctx, server)
 
 			Eventually(func() bool {
 				err := c.Create(ctx, obj)
@@ -143,6 +133,22 @@ var _ = Describe("Webhook", func() {
 		})
 	})
 })
+
+// startServer runs server until the spec ends, then waits for it to shut
+// down, so the next spec can bind the same port.
+func startServer(ctx context.Context, server webhook.Server) {
+	ctx, cancel := context.WithCancel(ctx)
+	done := make(chan struct{})
+	go func() {
+		defer GinkgoRecover()
+		defer close(done)
+		Expect(server.Start(ctx)).To(Succeed())
+	}()
+	DeferCleanup(func() {
+		cancel()
+		Eventually(done, time.Minute).Should(BeClosed())
+	})
+}
 
 type rejectingValidator struct {
 	d admission.Decoder
