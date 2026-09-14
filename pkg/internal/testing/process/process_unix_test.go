@@ -32,7 +32,8 @@ import (
 	. "sigs.k8s.io/controller-runtime/pkg/internal/testing/process"
 )
 
-// Only unix has process groups.
+// Only unix puts the process in its own group and signals it. On Windows,
+// Stop kills just the process, which exits before a 1ns StopTimeout expires.
 var _ = Describe("Stop method", func() {
 	var (
 		server       *ghttp.Server
@@ -45,6 +46,15 @@ var _ = Describe("Stop method", func() {
 
 	AfterEach(func() {
 		server.Close()
+	})
+
+	Context("when the command cannot be stopped", func() {
+		It("returns a timeout error", func() {
+			Expect(processState.Start(nil, nil)).To(Succeed())
+			processState.StopTimeout = 1 * time.Nanosecond // much shorter than the sleep in the script
+
+			Expect(processState.Stop()).To(MatchError(ContainSubstring("timeout")))
+		})
 	})
 
 	Context("when the process spawns children", func() {

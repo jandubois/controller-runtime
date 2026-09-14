@@ -186,7 +186,7 @@ func setConfigs(tc testCase, dir string) {
 		for _, k := range tc.kubeconfigEnv {
 			kubeconfigEnvPaths = append(kubeconfigEnvPaths, filepath.Join(dir, k))
 		}
-		os.Setenv(clientcmd.RecommendedConfigPathEnvVar, strings.Join(kubeconfigEnvPaths, ":"))
+		os.Setenv(clientcmd.RecommendedConfigPathEnvVar, strings.Join(kubeconfigEnvPaths, string(filepath.ListSeparator)))
 	}
 }
 

@@ -18,6 +18,7 @@ package process
 
 import (
 	"os"
+	"path/filepath"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -58,19 +59,19 @@ var _ = Describe("BinPathFinder", func() {
 			Expect(os.Setenv(EnvAssetsPath, "/global/path")).To(Succeed())
 		})
 		It("should prefer the global override, appending the name to that path", func() {
-			Expect(BinPathFinder("some-fake", "/hardcoded/path")).To(Equal("/global/path/some-fake"))
+			Expect(BinPathFinder("some-fake", "/hardcoded/path")).To(Equal(filepath.FromSlash("/global/path/some-fake")))
 		})
 	})
 
 	Context("when an asset directory is given and no overrides are present", func() {
 		It("should use the asset directory, appending the name to that path", func() {
-			Expect(BinPathFinder("some-fake", "/hardcoded/path")).To(Equal("/hardcoded/path/some-fake"))
+			Expect(BinPathFinder("some-fake", "/hardcoded/path")).To(Equal(filepath.FromSlash("/hardcoded/path/some-fake")))
 		})
 	})
 
 	Context("when no path configuration is given", func() {
 		It("should just use the default path", func() {
-			Expect(BinPathFinder("some-fake", "")).To(Equal("/usr/local/kubebuilder/bin/some-fake"))
+			Expect(BinPathFinder("some-fake", "")).To(Equal(filepath.FromSlash("/usr/local/kubebuilder/bin/some-fake")))
 		})
 	})
 })

@@ -18,10 +18,12 @@ package process_test
 
 import (
 	"bytes"
+	"io/fs"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"strconv"
 	"time"
 
@@ -109,7 +111,7 @@ var _ = Describe("Start method", func() {
 			})
 
 			It("propagates the error", func() {
-				Expect(os.IsNotExist(err)).To(BeTrue())
+				Expect(err).To(Or(MatchError(fs.ErrNotExist), MatchError(exec.ErrNotFound)))
 			})
 
 			Context("but Stop() is called on it", func() {
@@ -269,15 +271,6 @@ var _ = Describe("Stop method", func() {
 				Expect(stoppingTheProcess).NotTo(Panic())
 				Expect(stoppingTheProcess).NotTo(Panic())
 			})
-		})
-	})
-
-	Context("when the command cannot be stopped", func() {
-		It("returns a timeout error", func() {
-			Expect(processState.Start(nil, nil)).To(Succeed())
-			processState.StopTimeout = 1 * time.Nanosecond // much shorter than the sleep in the script
-
-			Expect(processState.Stop()).To(MatchError(ContainSubstring("timeout")))
 		})
 	})
 
