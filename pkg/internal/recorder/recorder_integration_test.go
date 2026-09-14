@@ -18,6 +18,7 @@ package recorder_test
 
 import (
 	"context"
+	"runtime"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -40,6 +41,10 @@ import (
 var _ = Describe("recorder", func() {
 	Describe("deprecated recorder", func() {
 		It("should publish events", func(ctx SpecContext) {
+			if runtime.GOOS == "windows" {
+				Skip("client-go drops events for one object emitted within the same Windows clock tick: their names collide")
+			}
+
 			By("Creating the Manager")
 			cm, err := manager.New(cfg, manager.Options{})
 			Expect(err).NotTo(HaveOccurred())
