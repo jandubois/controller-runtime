@@ -1,0 +1,41 @@
+name: Windows tests
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test (windows)
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # tag=v7.0.1
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # tag=v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Build
+        run: go build ./...
+      - name: Vet
+        if: ${{ !cancelled() }}
+        run: go vet ./...
+      - name: Install envtest binaries
+        if: ${{ !cancelled() }}
+        run: |
+          $assets = go -C tools/setup-envtest run . use -p path 1.32.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "KUBEBUILDER_ASSETS=$assets" >> $env:GITHUB_ENV
+      - name: Test
+        if: ${{ !cancelled() }}
+        timeout-minutes: 60
+        run: go test -timeout 30m ./...
+      - name: Test setup-envtest
+        if: ${{ !cancelled() }}
+        timeout-minutes: 20
+        working-directory: tools/setup-envtest
+        run: go test ./...

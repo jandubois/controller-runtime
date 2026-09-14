@@ -18,6 +18,7 @@ package env_test
 
 import (
 	"bytes"
+	"path/filepath"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -76,7 +77,7 @@ var _ = Describe("Env", func() {
 			})
 
 			It("should contain the version", func() {
-				Expect(outBuffer.String()).To(ContainSubstring("/kb's test store/k8s/1.21.3-linux-amd64"))
+				Expect(outBuffer.String()).To(ContainSubstring(filepath.FromSlash("/kb's test store/k8s/1.21.3-linux-amd64")))
 			})
 			It("should contain the path", func() {
 				Expect(outBuffer.String()).To(ContainSubstring("1.21.3"))
@@ -89,7 +90,7 @@ var _ = Describe("Env", func() {
 		Context("as just a path", func() {
 			It("should print out just the path", func() {
 				env.PrintInfo(PrintPath)
-				Expect(outBuffer.String()).To(Equal(`/kb's test store/k8s/1.21.3-linux-amd64`))
+				Expect(outBuffer.String()).To(Equal(filepath.FromSlash(`/kb's test store/k8s/1.21.3-linux-amd64`)))
 			})
 		})
 
@@ -101,7 +102,7 @@ var _ = Describe("Env", func() {
 				Expect(outBuffer.String()).To(HavePrefix("export KUBEBUILDER_ASSETS="))
 			})
 			It("should quote the return path, escaping quotes to deal with spaces, etc", func() {
-				Expect(outBuffer.String()).To(HaveSuffix(`='/kb'"'"'s test store/k8s/1.21.3-linux-amd64'` + "\n"))
+				Expect(outBuffer.String()).To(HaveSuffix(filepath.FromSlash(`='/kb'"'"'s test store/k8s/1.21.3-linux-amd64'`) + "\n"))
 			})
 		})
 	})

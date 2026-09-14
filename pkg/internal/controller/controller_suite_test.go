@@ -26,6 +26,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
 
 func TestSource(t *testing.T) {
@@ -48,6 +49,9 @@ var _ = BeforeSuite(func() {
 
 	clientset, err = kubernetes.NewForConfig(cfg)
 	Expect(err).NotTo(HaveOccurred())
+
+	// Prevent the metrics listener being created
+	metricsserver.DefaultBindAddress = "0"
 })
 
 var _ = AfterSuite(func() {

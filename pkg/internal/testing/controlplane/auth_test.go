@@ -67,7 +67,7 @@ var _ = Describe("Cert Authentication", func() {
 		It("should have set up the API server to use the written file for client cert auth", func() {
 			args := process.EmptyArguments()
 			Expect(authn.Configure("/tmp/____doesnotexist", args)).To(Succeed())
-			Expect(args.Get("client-ca-file").Get(nil)).To(ConsistOf("/tmp/____doesnotexist/client-cert-auth-ca.crt"))
+			Expect(args.Get("client-ca-file").Get(nil)).To(ConsistOf(filepath.FromSlash("/tmp/____doesnotexist/client-cert-auth-ca.crt")))
 		})
 	})
 

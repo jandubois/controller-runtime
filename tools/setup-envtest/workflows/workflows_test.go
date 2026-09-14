@@ -132,12 +132,12 @@ var _ = Describe("Workflows", func() {
 			})
 			It("should fall back to normal behavior when the env is not set", func() {
 				flow.Do(env)
-				Expect(out.String()).To(HaveSuffix("/1.16.0-linux-amd64"), "should fall back to a local version")
+				Expect(out.String()).To(HaveSuffix(filepath.FromSlash("/1.16.0-linux-amd64")), "should fall back to a local version")
 			})
 			It("should fall back to normal behavior if binaries are missing", func() {
 				flow.AssetsPath = ".teststore/missing-binaries"
 				flow.Do(env)
-				Expect(out.String()).To(HaveSuffix("/1.16.0-linux-amd64"), "should fall back to a local version")
+				Expect(out.String()).To(HaveSuffix(filepath.FromSlash("/1.16.0-linux-amd64")), "should fall back to a local version")
 			})
 			It("should use the value of the env if it contains the right binaries", func() {
 				flow.AssetsPath = ".teststore/good-version"
@@ -184,7 +184,7 @@ var _ = Describe("Workflows", func() {
 				flow.Do(env)
 
 				// latest on "server" is 1.16.4, shouldn't use that
-				Expect(out.String()).To(HaveSuffix("/1.16.1-linux-amd64"), "should use the latest local version")
+				Expect(out.String()).To(HaveSuffix(filepath.FromSlash("/1.16.1-linux-amd64")), "should use the latest local version")
 			})
 		})
 
@@ -197,7 +197,7 @@ var _ = Describe("Workflows", func() {
 					},
 				}
 				flow.Do(env)
-				Expect(out.String()).To(HaveSuffix("/1.16.4-linux-amd64"), "should use the latest remote version")
+				Expect(out.String()).To(HaveSuffix(filepath.FromSlash("/1.16.4-linux-amd64")), "should use the latest remote version")
 			})
 			It("should still use the latest local if the network doesn't have anything newer", func() {
 				env.Version = versions.Spec{
@@ -210,7 +210,7 @@ var _ = Describe("Workflows", func() {
 				flow.Do(env)
 
 				// latest on the server is 1.14.1, latest local is 1.14.26
-				Expect(out.String()).To(HaveSuffix("/1.14.26-linux-amd64"), "should use the latest local version")
+				Expect(out.String()).To(HaveSuffix(filepath.FromSlash("/1.14.26-linux-amd64")), "should use the latest local version")
 			})
 		})
 
@@ -221,7 +221,7 @@ var _ = Describe("Workflows", func() {
 			}
 			flow.Do(env)
 			// latest on the server is 1.16.4, latest local is 1.16.1
-			Expect(out.String()).To(HaveSuffix("/1.16.1-linux-amd64"), "should use the latest local version")
+			Expect(out.String()).To(HaveSuffix(filepath.FromSlash("/1.16.1-linux-amd64")), "should use the latest local version")
 		})
 
 		It("should fall back to the network if no local matches are found", func() {
@@ -229,7 +229,7 @@ var _ = Describe("Workflows", func() {
 				Selector: versions.TildeSelector{Concrete: ver(1, 19, 0)},
 			}
 			flow.Do(env)
-			Expect(out.String()).To(HaveSuffix("/1.19.2-linux-amd64"), "should have a remote version")
+			Expect(out.String()).To(HaveSuffix(filepath.FromSlash("/1.19.2-linux-amd64")), "should have a remote version")
 		})
 
 		It("should error out if no matches can be found anywhere", func() {

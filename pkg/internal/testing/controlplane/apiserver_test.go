@@ -24,6 +24,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"runtime"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -152,7 +153,7 @@ var _ = Describe("APIServer", func() {
 					Address: "localhost",
 					Port:    "8675",
 				}
-				server.Path = "./testdata/fake-1.19-apiserver.sh"
+				useFakeAPIServer(server, "./testdata/fake-1.19-apiserver.sh")
 			})
 			It("should set the insecure-port and insecure-bind-address fields from insecureserving", func() {
 				Expect(APIServerArguments(server)).To(ContainElements(
@@ -164,7 +165,7 @@ var _ = Describe("APIServer", func() {
 
 		Context("when insecureserving is disabled, on binaries with no insecure-port flag", func() {
 			BeforeEach(func() {
-				server.Path = "./testdata/fake-1.20-apiserver.sh"
+				useFakeAPIServer(server, "./testdata/fake-1.20-apiserver.sh")
 			})
 			It("should not try to explicitly disable the insecure port", func() {
 				Expect(APIServerArguments(server)).NotTo(ContainElement(HavePrefix("--insecure-port")))
@@ -173,7 +174,7 @@ var _ = Describe("APIServer", func() {
 
 		Context("when insecureserving is disabled, on binaries with an insecure-port flag", func() {
 			BeforeEach(func() {
-				server.Path = "./testdata/fake-1.19-apiserver.sh"
+				useFakeAPIServer(server, "./testdata/fake-1.19-apiserver.sh")
 			})
 			It("should explicitly disable the insecure port", func() {
 				Expect(APIServerArguments(server)).To(ContainElement("--insecure-port=0"))
@@ -328,6 +329,15 @@ var _ = Describe("APIServer", func() {
 		})
 	})
 })
+
+// useFakeAPIServer points server at one of the fake apiserver shell scripts in
+// testdata. Windows cannot execute shell scripts, so the spec is skipped there.
+func useFakeAPIServer(server *APIServer, script string) {
+	if runtime.GOOS == "windows" {
+		Skip("the fake apiservers are shell scripts, which Windows cannot execute")
+	}
+	server.Path = script
+}
 
 type fakeAuthn struct {
 	workDir string

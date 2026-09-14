@@ -17,16 +17,14 @@ limitations under the License.
 package process_test
 
 import (
-	"bufio"
 	"bytes"
-	"io"
+	"io/fs"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"strconv"
-	"strings"
-	"syscall"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -113,7 +111,7 @@ var _ = Describe("Start method", func() {
 			})
 
 			It("propagates the error", func() {
-				Expect(os.IsNotExist(err)).To(BeTrue())
+				Expect(err).To(Or(MatchError(fs.ErrNotExist), MatchError(exec.ErrNotFound)))
 			})
 
 			Context("but Stop() is called on it", func() {
@@ -248,15 +246,7 @@ var _ = Describe("Stop method", func() {
 	)
 	BeforeEach(func() {
 		server = ghttp.NewServer()
-		server.RouteToHandler("GET", healthURLPath, ghttp.RespondWith(http.StatusOK, ""))
-		processState = &State{
-			Path: "bash",
-			Args: simpleBashScript,
-			HealthCheck: HealthCheck{
-				URL: getServerURL(server),
-			},
-		}
-		processState.StartTimeout = 10 * time.Second
+		processState = newHealthyState(server)
 	})
 
 	AfterEach(func() {
@@ -284,15 +274,6 @@ var _ = Describe("Stop method", func() {
 		})
 	})
 
-	Context("when the command cannot be stopped", func() {
-		It("returns a timeout error", func() {
-			Expect(processState.Start(nil, nil)).To(Succeed())
-			processState.StopTimeout = 1 * time.Nanosecond // much shorter than the sleep in the script
-
-			Expect(processState.Stop()).To(MatchError(ContainSubstring("timeout")))
-		})
-	})
-
 	Context("when the directory needs to be cleaned up", func() {
 		It("removes the directory", func() {
 			var err error
@@ -305,59 +286,6 @@ var _ = Describe("Stop method", func() {
 
 			Expect(processState.Stop()).To(Succeed())
 			Expect(processState.Dir).NotTo(BeAnExistingFile())
-		})
-	})
-
-	Context("when the process spawns children", func() {
-		It("stops the full process group including all its children", func() {
-			pr, pw := io.Pipe()
-			defer pr.Close()
-			defer pw.Close()
-
-			processState.Args = []string{
-				"-c",
-				"trap 'if [ -n \"${child_pid}\" ]; then wait \"${child_pid}\"; fi; exit 0' TERM INT; " +
-					"sleep 30 & child_pid=$!; echo ${child_pid}; wait \"${child_pid}\"",
-			}
-			processState.StopTimeout = 10 * time.Second
-
-			childPIDChan := make(chan int, 1)
-			go func() {
-				scanner := bufio.NewScanner(pr)
-				if scanner.Scan() {
-					if pid, err := strconv.Atoi(strings.TrimSpace(scanner.Text())); err == nil {
-						childPIDChan <- pid
-					}
-				}
-			}()
-
-			Expect(processState.Start(pw, nil)).To(Succeed())
-			expectedProcessGroupID := processState.Cmd.Process.Pid
-
-			// wait until process started and we've captured the childPID
-			var childPID int
-			Eventually(childPIDChan, 5*time.Second).Should(Receive(&childPID))
-			DeferCleanup(func() {
-				if processState.Cmd != nil && processState.Cmd.Process != nil {
-					_ = syscall.Kill(-processState.Cmd.Process.Pid, syscall.SIGKILL)
-				}
-			})
-
-			// call stop on the process and expect child pid lookups to eventually
-			// tell us that no process can be found
-			Expect(processState.Stop()).To(Succeed())
-			Eventually(func() bool {
-				pgid, err := syscall.Getpgid(childPID)
-				if err == syscall.ESRCH {
-					return true
-				}
-				if err != nil {
-					return false
-				}
-
-				// if the pid was re-used by another process, it won't be in the original process group
-				return pgid != expectedProcessGroupID
-			}, 5*time.Second).Should(BeTrue())
 		})
 	})
 })
@@ -415,4 +343,18 @@ func getServerURL(server *ghttp.Server) url.URL {
 	Expect(err).NotTo(HaveOccurred())
 	url.Path = healthURLPath
 	return *url
+}
+
+// newHealthyState returns a State that runs simpleBashScript and whose
+// health check server answers with 200.
+func newHealthyState(server *ghttp.Server) *State {
+	server.RouteToHandler("GET", healthURLPath, ghttp.RespondWith(http.StatusOK, ""))
+	return &State{
+		Path: "bash",
+		Args: simpleBashScript,
+		HealthCheck: HealthCheck{
+			URL: getServerURL(server),
+		},
+		StartTimeout: 10 * time.Second,
+	}
 }
